@@ -8,7 +8,13 @@
 --
 
 local offsets = {
-    AircraftName = 0x3D00
+      AircraftName            = 0x3D00
+    , AutoPilotMasterSwitch   = 0x07BC
+    , AutoPilotNav1Lock       = 0x07C4
+    , AutoPilotHeadingLock    = 0x07C8
+    , AutoPilotAltitudeLock   = 0x07D0
+    , AutoPilotApproachHold   = 0x0800
+    , AutoPilotBackCourseHold = 0x0804
 }
 local honeycombBravoDevice = {
       Vendor  = 0x294B -- Honeycomb Bravo vendor id
@@ -34,6 +40,12 @@ local currentA2aEventsState = {
   , Eng1OilTemp = 0.0
   , Eng1OilPressure = 0.0
   , Eng1Cht = 0.0
+  , IsApMasterEnabled = false
+  , IsApNavEnabled = false
+  , IsApHeadingEnabled = false
+  , IsApAltEnabled = false
+  , IsApAprEnabled = false
+  , IsApRevEnabled = false
 }
 local bravoLedBitsProcessor = require("HoneyCombBravoLedBitsProcessor")
 
@@ -63,6 +75,12 @@ function CopyA2aEventsState(stateToCopy)
         , Eng1OilTemp              = stateToCopy.Eng1OilTemp
         , Eng1OilPressure          = stateToCopy.Eng1OilPressure
         , Eng1Cht                  = stateToCopy.Eng1Cht
+        , IsApMasterEnabled        = stateToCopy.IsApMasterEnabled
+        , IsApNavEnabled           = stateToCopy.IsApNavEnabled
+        , IsApHeadingEnabled       = stateToCopy.IsApHeadingEnabled
+        , IsApAltEnabled           = stateToCopy.IsApAltEnabled
+        , IsApAprEnabled           = stateToCopy.IsApAprEnabled
+        , IsApRevEnabled           = stateToCopy.IsApRevEnabled
     }
     return newState
 end
@@ -84,7 +102,13 @@ function HasA2aEventsStateChanged(currentState, previousState)
     or currentState.FSXBusVoltage            ~= previousState.FSXBusVoltage
     or currentState.Eng1OilTemp              ~= previousState.Eng1OilTemp
     or currentState.Eng1OilPressure          ~= previousState.Eng1OilPressure
-    or currentState.Eng1Cht                  ~= previousState.Eng1Cht then
+    or currentState.Eng1Cht                  ~= previousState.Eng1Cht
+    or currentState.IsApMasterEnabled        ~= previousState.IsApMasterEnabled
+    or currentState.IsApNavEnabled           ~= previousState.IsApNavEnabled
+    or currentState.IsApHeadingEnabled       ~= previousState.IsApHeadingEnabled
+    or currentState.IsApAltEnabled           ~= previousState.IsApAltEnabled
+    or currentState.IsApAprEnabled           ~= previousState.IsApAprEnabled
+    or currentState.IsApRevEnabled           ~= previousState.IsApRevEnabled then
         hasChanged = true
     end
 
@@ -94,6 +118,30 @@ end
 function AircraftNameEvent(offset, value)
     local a2aAircraftName = "A2A Cessna 172R"
     isActiveAircraftA2AC172R = value:sub(1, #a2aAircraftName) == a2aAircraftName
+end
+
+function AutoPilotMasterSwitchEvent(offset, value)
+    currentA2aEventsState.IsApMasterEnabled = value > 0
+end
+
+function AutoPilotNav1LockEvent(offset, value)
+    currentA2aEventsState.IsApNavEnabled = value > 0
+end
+
+function AutoPilotHeadingLockEvent(offset, value)
+    currentA2aEventsState.IsApHeadingEnabled = value > 0
+end
+
+function AutoPilotAltitudeLockEvent(offset, value)
+    currentA2aEventsState.IsApAltEnabled = value > 0
+end
+
+function AutoPilotApproachHoldEvent(offset, value)
+    currentA2aEventsState.IsApAprEnabled = value > 0
+end
+
+function AutoPilotBackCourseHoldEvent(offset, value)
+    currentA2aEventsState.IsApRevEnabled = value > 0
 end
 
 function LowOilPressureLightEvent(varname, value, userParameter)
@@ -175,6 +223,12 @@ function Poll(time)
             bravoLedBitsProcessor.SetLedBitsFromFeatureString(featureString)
 
             -- Set Bravo LED bits according to A2A C172 State
+            bravoLedBitsProcessor.SetAutoPilotMasterLed(currentState.IsApMasterEnabled)
+            bravoLedBitsProcessor.SetAutoPilotNavLed(currentState.IsApNavEnabled)
+            bravoLedBitsProcessor.SetAutoPilotHeadingLed(currentState.IsApHeadingEnabled)
+            bravoLedBitsProcessor.SetAutoPilotAltLed(currentState.IsApAltEnabled)
+            bravoLedBitsProcessor.SetAutoPilotAprLed(currentState.IsApAprEnabled)
+            bravoLedBitsProcessor.SetAutoPilotRevLed(currentState.IsApRevEnabled)
             bravoLedBitsProcessor.SetLowOilPressureLed(currentState.IsOnLowOilPressureLight)
             bravoLedBitsProcessor.SetLowFuelPressureLed(currentState.IsOnLowFuelPressureLight)
             bravoLedBitsProcessor.SetVacuumLed(currentState.IsOnVacuumLight)
@@ -214,6 +268,13 @@ end
 -- Subscribe to events
 local lVarPollInterval = 250 -- Milliseconds
 event.offset(offsets.AircraftName, "STR", 0, "AircraftNameEvent")
+event.offset(offsets.AutoPilotMasterSwitch, "UD", 0, "AutoPilotMasterSwitchEvent")
+event.offset(offsets.AutoPilotNav1Lock, "UD", 0, "AutoPilotNav1LockEvent")
+event.offset(offsets.AutoPilotHeadingLock, "UD", 0, "AutoPilotHeadingLockEvent")
+event.offset(offsets.AutoPilotAltitudeLock, "UD", 0, "AutoPilotAltitudeLockEvent")
+event.offset(offsets.AutoPilotApproachHold, "UD", 0, "AutoPilotApproachHoldEvent")
+event.offset(offsets.AutoPilotBackCourseHold, "UD", 0, "AutoPilotBackCourseHoldEvent")
+
 event.Lvar("OilPressLight", lVarPollInterval, "LowOilPressureLightEvent")
 event.Lvar("FuelLight", lVarPollInterval, "LowFuelLightEvent")
 event.Lvar("VacLight", lVarPollInterval, "VacuumLightEvent")

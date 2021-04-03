@@ -19,7 +19,7 @@ local bravoLedBitsProcessor = {
       , AltBitMask          = 0x10
       , VsBitMask           = 0x20
       , IasBitMask          = 0x40
-      , ApBitMask           = 0x80
+      , ApMasterBitMask     = 0x80
     }
     , Lights1 = {
         Bits                  = 0x00 -- The bits value for the Lights1 LEDs
@@ -197,20 +197,20 @@ function bravoLedBitsProcessor.TurnOffAutoPilotIasLed()
     bravoLedBitsProcessor.AutoPilot.Bits = logic.And(bravoLedBitsProcessor.AutoPilot.Bits, logic.Not(bravoLedBitsProcessor.AutoPilot.IasBitMask))
 end
 
-function bravoLedBitsProcessor.SetAutoPilotLed(turnOn)
+function bravoLedBitsProcessor.SetAutoPilotMasterLed(turnOn)
     if turnOn then
-        bravoLedBitsProcessor.TurnOnAutoPilotLed()
+        bravoLedBitsProcessor.TurnOnAutoPilotMasterLed()
     else
-        bravoLedBitsProcessor.TurnOffAutoPilotLed()
+        bravoLedBitsProcessor.TurnOffAutoPilotMasterLed()
     end
 end
 
-function bravoLedBitsProcessor.TurnOnAutoPilotLed()
-    bravoLedBitsProcessor.AutoPilot.Bits = logic.Or(bravoLedBitsProcessor.AutoPilot.Bits, bravoLedBitsProcessor.AutoPilot.ApBitMask)
+function bravoLedBitsProcessor.TurnOnAutoPilotMasterLed()
+    bravoLedBitsProcessor.AutoPilot.Bits = logic.Or(bravoLedBitsProcessor.AutoPilot.Bits, bravoLedBitsProcessor.AutoPilot.ApMasterBitMask)
 end
 
-function bravoLedBitsProcessor.TurnOffAutoPilotLed()
-    bravoLedBitsProcessor.AutoPilot.Bits = logic.And(bravoLedBitsProcessor.AutoPilot.Bits, logic.Not(bravoLedBitsProcessor.AutoPilot.ApBitMask))
+function bravoLedBitsProcessor.TurnOffAutoPilotMasterLed()
+    bravoLedBitsProcessor.AutoPilot.Bits = logic.And(bravoLedBitsProcessor.AutoPilot.Bits, logic.Not(bravoLedBitsProcessor.AutoPilot.ApMasterBitMask))
 end
 
 -- First set of lights
