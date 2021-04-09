@@ -57,7 +57,6 @@ local bravoLedBitsProcessor = {
 --
 
 function bravoLedBitsProcessor.SetLedBitsFromFeatureString(featureString)
-    ipc.log("FeatureString is '" .. featureString .. "' with length " .. #featureString)
     if #featureString == 5 then
         -- featureString consists of five bytes. The first is the Report ID and skipped.
         bravoLedBitsProcessor.AutoPilot.Bits = string.byte(featureString:sub(2, 2))
@@ -70,11 +69,9 @@ function bravoLedBitsProcessor.SetLedBitsFromFeatureString(featureString)
         bravoLedBitsProcessor.Lights2.Bits = 0x00
         bravoLedBitsProcessor.Lights3.Bits = 0x00
     end
-    ipc.log("Feature to bits =  " .. bravoLedBitsProcessor.AutoPilot.Bits .. bravoLedBitsProcessor.Lights1.Bits .. bravoLedBitsProcessor.Lights2.Bits .. bravoLedBitsProcessor.Lights3.Bits)
 end
 
 function bravoLedBitsProcessor.GetFeatureStringFromLedBits()
-    ipc.log("Feature from bits" .. bravoLedBitsProcessor.AutoPilot.Bits .. bravoLedBitsProcessor.Lights1.Bits .. bravoLedBitsProcessor.Lights2.Bits .. bravoLedBitsProcessor.Lights3.Bits)
     local commandString = string.char(0)
                        .. string.char(bravoLedBitsProcessor.AutoPilot.Bits)
                        .. string.char(bravoLedBitsProcessor.Lights1.Bits)
