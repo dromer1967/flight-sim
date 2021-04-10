@@ -19,7 +19,7 @@ local bravoLedBitsProcessor = {
       , AltBitMask          = 0x10
       , VsBitMask           = 0x20
       , IasBitMask          = 0x40
-      , ApBitMask           = 0x80
+      , ApMasterBitMask     = 0x80
     }
     , Lights1 = {
         Bits                  = 0x00 -- The bits value for the Lights1 LEDs
@@ -57,7 +57,6 @@ local bravoLedBitsProcessor = {
 --
 
 function bravoLedBitsProcessor.SetLedBitsFromFeatureString(featureString)
-    ipc.log("FeatureString is '" .. featureString .. "' with length " .. #featureString)
     if #featureString == 5 then
         -- featureString consists of five bytes. The first is the Report ID and skipped.
         bravoLedBitsProcessor.AutoPilot.Bits = string.byte(featureString:sub(2, 2))
@@ -70,11 +69,9 @@ function bravoLedBitsProcessor.SetLedBitsFromFeatureString(featureString)
         bravoLedBitsProcessor.Lights2.Bits = 0x00
         bravoLedBitsProcessor.Lights3.Bits = 0x00
     end
-    ipc.log("Feature to bits =  " .. bravoLedBitsProcessor.AutoPilot.Bits .. bravoLedBitsProcessor.Lights1.Bits .. bravoLedBitsProcessor.Lights2.Bits .. bravoLedBitsProcessor.Lights3.Bits)
 end
 
 function bravoLedBitsProcessor.GetFeatureStringFromLedBits()
-    ipc.log("Feature from bits" .. bravoLedBitsProcessor.AutoPilot.Bits .. bravoLedBitsProcessor.Lights1.Bits .. bravoLedBitsProcessor.Lights2.Bits .. bravoLedBitsProcessor.Lights3.Bits)
     local commandString = string.char(0)
                        .. string.char(bravoLedBitsProcessor.AutoPilot.Bits)
                        .. string.char(bravoLedBitsProcessor.Lights1.Bits)
@@ -197,20 +194,20 @@ function bravoLedBitsProcessor.TurnOffAutoPilotIasLed()
     bravoLedBitsProcessor.AutoPilot.Bits = logic.And(bravoLedBitsProcessor.AutoPilot.Bits, logic.Not(bravoLedBitsProcessor.AutoPilot.IasBitMask))
 end
 
-function bravoLedBitsProcessor.SetAutoPilotLed(turnOn)
+function bravoLedBitsProcessor.SetAutoPilotMasterLed(turnOn)
     if turnOn then
-        bravoLedBitsProcessor.TurnOnAutoPilotLed()
+        bravoLedBitsProcessor.TurnOnAutoPilotMasterLed()
     else
-        bravoLedBitsProcessor.TurnOffAutoPilotLed()
+        bravoLedBitsProcessor.TurnOffAutoPilotMasterLed()
     end
 end
 
-function bravoLedBitsProcessor.TurnOnAutoPilotLed()
-    bravoLedBitsProcessor.AutoPilot.Bits = logic.Or(bravoLedBitsProcessor.AutoPilot.Bits, bravoLedBitsProcessor.AutoPilot.ApBitMask)
+function bravoLedBitsProcessor.TurnOnAutoPilotMasterLed()
+    bravoLedBitsProcessor.AutoPilot.Bits = logic.Or(bravoLedBitsProcessor.AutoPilot.Bits, bravoLedBitsProcessor.AutoPilot.ApMasterBitMask)
 end
 
-function bravoLedBitsProcessor.TurnOffAutoPilotLed()
-    bravoLedBitsProcessor.AutoPilot.Bits = logic.And(bravoLedBitsProcessor.AutoPilot.Bits, logic.Not(bravoLedBitsProcessor.AutoPilot.ApBitMask))
+function bravoLedBitsProcessor.TurnOffAutoPilotMasterLed()
+    bravoLedBitsProcessor.AutoPilot.Bits = logic.And(bravoLedBitsProcessor.AutoPilot.Bits, logic.Not(bravoLedBitsProcessor.AutoPilot.ApMasterBitMask))
 end
 
 -- First set of lights
