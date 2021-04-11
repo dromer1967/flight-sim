@@ -3,6 +3,8 @@
         "com",
         "ipc",
         "event",
-        "logic"
+        "logic",
+        "offsets",
+        "common"
     ]
 }
