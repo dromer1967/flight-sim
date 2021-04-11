@@ -1,14 +1,11 @@
 --
 -- Library to control the AutoPilot of the A2A Cessna 172R from the Honeycomb Bravo and partly vice versa.
 -- by Peter Brand
--- Version 0.1
 --
 -- Note: This script is intended to be used as a lua module in FSUIPC.
 -- Pete & John Dowson @http://www.fsuipc.com/
 --
 
-local a2aAircraftNameStart = "A2A Cessna 172R"
-local isActiveAircraftA2AC172R = false
 local p3dControlIds = {
       Vor1ObiDec    = 65662
     , Vor1ObiInc    = 65663
@@ -16,8 +13,7 @@ local p3dControlIds = {
     , HeadingBugDec = 65880
 }
 local offsets = {
-      AircraftName          = 0x3D00
-    , AutoPilotMasterSwitch = 0x07BC
+    AutoPilotMasterSwitch = 0x07BC
 }
 local buttons = {
       AutoPilotHdg       = 0
@@ -45,12 +41,6 @@ local apModeSelect = {
     , Alt = 5
 }
 local currentApModeSelect = apModeSelect.None
-local honeycombBravoDevice = {
-      Vendor  = 0x294B -- Honeycomb Bravo vendor id
-    , Product = 0x1901 -- Honeycomb Bravo product id
-    , Number  = 0      -- Multiple devices of the same name need increasing Device numbers
-    , Report  = 0      -- I *think* all joystick types use Input Report 0
-}
 local pollrate = 25 -- Polling rate in number of polls per second.
 local currentA2aEventsState = {
       IsApMasterEnabled = false
@@ -60,16 +50,11 @@ local currentA2aEventsState = {
     , IsApAprEnabled = false
     , IsApRevEnabled = false
 }
+local common = require("A2AC172RBravoCommon")
 local bravoLedBitsProcessor = require("HoneyCombBravoLedBitsProcessor")
 
 -- Open the Honeycomb Bravo device
-local dev, rd, wrf, wr, init = com.openhid(honeycombBravoDevice.Vendor, honeycombBravoDevice.Product, honeycombBravoDevice.Number, honeycombBravoDevice.Report)
-
--- Check if device is opened
-if dev == 0 then
-    ipc.log("A2AC172RBravo: Could not open HID!")
-    ipc.exit()
-end
+local dev, rd, wrf, wr, init = common.OpenHidDevice()
 
 function CopyA2aEventsState(stateToCopy)
     local newState = {
@@ -106,10 +91,6 @@ function ClearAutoPilotLeds()
     -- Write to feature
     local commandString = bravoLedBitsProcessor.GetFeatureStringFromLedBits()
     com.writefeature(dev, commandString, wrf)
-end
-
-function AircraftNameEvent(offset, value)
-    isActiveAircraftA2AC172R = value:sub(1, #a2aAircraftNameStart) == a2aAircraftNameStart
 end
 
 function AutoPilotMasterSwitchEvent(offset, value)
@@ -249,7 +230,7 @@ local previousA2aEventsState = CopyA2aEventsState(currentA2aEventsState)
 function Poll(time)
 
     -- Only process when the A2A C172R is the active aircraft
-    if isActiveAircraftA2AC172R then
+    if common.IsActiveAircraftA2AC172R then
 
         -- Copy current state to a variable to ensure that it does not change during the processing of it
         local currentState = CopyA2aEventsState(currentA2aEventsState)
@@ -278,44 +259,31 @@ end
 -- Initialise program
 --
 
--- Initialise device if applicable
-if init then
-    -- Deal with initial values, if supplied (some joysticks don't)
-    ipc.log("A2AC172RBravo: Init Seen!")
-    Poll(0)
-end
-
 -- Initialise Autopilot LEDs by turning them off
 ClearAutoPilotLeds()
 
 -- Subscribe to events
-local lVarPollInterval = 250 -- Milliseconds
-event.offset(offsets.AircraftName, "STR", 0, "AircraftNameEvent")
 event.offset(offsets.AutoPilotMasterSwitch, "UD", 0, "AutoPilotMasterSwitchEvent")
 
-event.button(0, buttons.AutoPilotHdg, 3, "AutoPilotHdgButtonEvent")
-event.button(0, buttons.AutoPilotNav, 3, "AutoPilotNavButtonEvent")
-event.button(0, buttons.AutoPilotApr, 3, "AutoPilotAprButtonEvent")
-event.button(0, buttons.AutoPilotRev, 3, "AutoPilotRevButtonEvent")
-event.button(0, buttons.AutoPilotAlt, 3, "AutoPilotAltButtonEvent")
-event.button(0, buttons.AutoPilotVs, 3, "AutoPilotVsButtonEvent")
-event.button(0, buttons.AutoPilotIas, 3, "AutoPilotIasButtonEvent")
-event.button(0, buttons.AutoPilotMaster, 3, "AutoPilotMasterButtonEvent")
-event.button(0, buttons.AutoPilotIncrease, 1, "AutoPilotIncreaseButtonEvent")
-event.button(0, buttons.AutoPilotDecrease, 1, "AutoPilotDecreaseButtonEvent")
-event.button(0, buttons.AutoPilotSelectIas, 1, "AutoPilotSelectIasButtonEvent")
-event.button(0, buttons.AutoPilotSelectCrs, 1, "AutoPilotSelectCrsButtonEvent")
-event.button(0, buttons.AutoPilotSelectHdg, 1, "AutoPilotSelectHdgButtonEvent")
-event.button(0, buttons.AutoPilotSelectVs, 1, "AutoPilotSelectVsButtonEvent")
-event.button(0, buttons.AutoPilotSelectAlt, 1, "AutoPilotSelectAltButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotHdg, 3, "AutoPilotHdgButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotNav, 3, "AutoPilotNavButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotApr, 3, "AutoPilotAprButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotRev, 3, "AutoPilotRevButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotAlt, 3, "AutoPilotAltButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotVs, 3, "AutoPilotVsButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotIas, 3, "AutoPilotIasButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotMaster, 3, "AutoPilotMasterButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotIncrease, 1, "AutoPilotIncreaseButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotDecrease, 1, "AutoPilotDecreaseButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectIas, 1, "AutoPilotSelectIasButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectCrs, 1, "AutoPilotSelectCrsButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectHdg, 1, "AutoPilotSelectHdgButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectVs, 1, "AutoPilotSelectVsButtonEvent")
+event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectAlt, 1, "AutoPilotSelectAltButtonEvent")
 
 -- Initialse all LEDs by turning them off
 local commandString = bravoLedBitsProcessor.GetFeatureStringFromLedBits()
 com.writefeature(dev, commandString, wrf)
 
-if pollrate == 0 then
-    -- Ouch. Mustn't divide by zero!
-    pollrate = 25
-end
 -- Start the main event loop
 event.timer(1000/pollrate, "Poll")  -- poll values 'Pollrate' times per second

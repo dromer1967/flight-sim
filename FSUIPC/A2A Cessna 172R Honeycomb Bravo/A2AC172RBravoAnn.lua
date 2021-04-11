@@ -1,29 +1,17 @@
 --
 -- Library to control the Annunciator LEDs of the Honeycomb Bravo from the A2A Cessna 172R control variables.
 -- by Peter Brand
--- Version 0.1
 --
 -- Note: This script is intended to be used as a lua module in FSUIPC.
 -- Pete & John Dowson @http://www.fsuipc.com/
 --
 
-local a2aAircraftNameStart = "A2A Cessna 172R"
-local isActiveAircraftA2AC172R = false
-local offsets = {
-    AircraftName = 0x3D00
-}
 local annunciatorThresholds = {
       MinFsxBusVoltage  =   6.0 -- Volts
     , MinOilTemperature =  38.0 -- Degrees Celcius
     , MaxOilTemperature = 118.0 -- Degrees Celcius
     , MaxOilPressure    = 115.0 -- PSI
     , MaxCht            = 232.0 -- Degrees Celcius
-}
-local honeycombBravoDevice = {
-      Vendor  = 0x294B -- Honeycomb Bravo vendor id
-    , Product = 0x1901 -- Honeycomb Bravo product id
-    , Number  = 0      -- Multiple devices of the same name need increasing Device numbers
-    , Report  = 0      -- Report 0 is used
 }
 local pollrate = 25 -- Polling rate in number of polls per second.
 local currentA2aEventsState = {
@@ -43,16 +31,11 @@ local currentA2aEventsState = {
     , Engine1OilPressure       = 0.0
     , Engine1Cht               = 0.0
 }
+local common = require("A2AC172RBravoCommon")
 local bravoLedBitsProcessor = require("HoneyCombBravoLedBitsProcessor")
 
 -- Open the Honeycomb Bravo device
-local dev, rd, wrf, wr, init = com.openhid(honeycombBravoDevice.Vendor, honeycombBravoDevice.Product, honeycombBravoDevice.Number, honeycombBravoDevice.Report)
-
--- Check if device is opened
-if dev == 0 then
-    ipc.log("A2AC172RBravo: Could not open HID!")
-    ipc.exit()
-end
+local dev, rd, wrf, wr, init = common.OpenHidDevice()
 
 function CopyA2aEventsState(stateToCopy)
     local newState = {
@@ -125,10 +108,6 @@ function ClearAnnunicatorLeds()
     com.writefeature(dev, commandString, wrf)
 end
 
-function AircraftNameEvent(offset, value)
-    isActiveAircraftA2AC172R = value:sub(1, #a2aAircraftNameStart) == a2aAircraftNameStart
-end
-
 function LowOilPressureLightEvent(varname, value, userParameter)
     currentA2aEventsState.IsOnLowOilPressureLight = value > 0
 end
@@ -196,7 +175,7 @@ local previousA2aEventsState = CopyA2aEventsState(currentA2aEventsState)
 function Poll(time)
 
     -- Only process when the A2A C172R is the active aircraft
-    if isActiveAircraftA2AC172R then
+    if common.IsActiveAircraftA2AC172R then
 
         -- Copy current state to a variable to ensure that it does not change during the processing of it
         local currentState = CopyA2aEventsState(currentA2aEventsState)
@@ -238,19 +217,11 @@ end
 -- Initialise program
 --
 
--- Initialise device if applicable
-if init then
-    -- Deal with initial values, if supplied (some joysticks don't)
-    ipc.log("A2AC172RBravo: Init Seen!")
-    Poll(0)
-end
-
 -- Initialise Annunciator LEDs by turning them off
 ClearAnnunicatorLeds()
 
 -- Subscribe to events
 local lVarPollInterval = 250 -- Milliseconds
-event.offset(offsets.AircraftName, "STR", 0, "AircraftNameEvent")
 event.Lvar("OilPressLight", lVarPollInterval, "LowOilPressureLightEvent")
 event.Lvar("FuelLight", lVarPollInterval, "LowFuelLightEvent")
 event.Lvar("VacLight", lVarPollInterval, "VacuumLightEvent")
@@ -266,11 +237,6 @@ event.Lvar("FSXBusVoltage", lVarPollInterval, "FSXBusVoltageEvent")
 event.Lvar("Eng1_OilTemp", lVarPollInterval, "Engine1OilTemperatureEvent")
 event.Lvar("Eng1_OilPressure", lVarPollInterval, "Engine1OilPressureEvent")
 event.Lvar("Eng1_CHT", lVarPollInterval, "Engine1ChtEvent")
-
-if pollrate == 0 then
-    -- Ouch. Mustn't divide by zero!
-    pollrate = 25
-end
 
 -- Start the main event loop
 event.timer(1000/pollrate, "Poll")  -- poll values 'Pollrate' times per second
