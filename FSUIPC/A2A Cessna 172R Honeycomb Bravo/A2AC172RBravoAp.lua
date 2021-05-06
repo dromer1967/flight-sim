@@ -12,9 +12,6 @@ local p3dControlIds = {
     , HeadingBugInc = 65879
     , HeadingBugDec = 65880
 }
-local offsets = {
-    AutoPilotMasterSwitch = 0x07BC
-}
 local buttons = {
       AutoPilotHdg       = 0
     , AutoPilotNav       = 1
@@ -32,23 +29,35 @@ local buttons = {
     , AutoPilotSelectVs  = 19
     , AutoPilotSelectAlt = 20
 }
-local apModeSelect = {
+local apModeSelector = {
       None = 0
-    , Ias = 1
-    , Crs = 2
-    , Hdg = 3
-    , Vs  = 4
-    , Alt = 5
+    , Ias  = 1
+    , Crs  = 2
+    , Hdg  = 3
+    , Vs   = 4
+    , Alt  = 5
 }
-local currentApModeSelect = apModeSelect.None
-local pollrate = 25 -- Polling rate in number of polls per second.
+local kap140LateralMode = {
+      Off  = 0
+    , Roll = 1
+    , Hdg  = 2
+    , Nav  = 3
+    , Apr  = 4
+    , Rev  = 5
+    , Gs   = 6 -- Glide Scope
+}
+local kap140VerticalMode = {
+      Off = 0
+    , Vs  = 1
+    , Alt = 2
+    , Gs  = 3 -- Glide Scope
+}
+local currentApModeSelector = apModeSelector.None
+local pollrate = 20 -- Polling rate in number of polls per second.
 local currentA2aEventsState = {
-      IsApMasterEnabled = false
-    , IsApNavEnabled = false
-    , IsApHeadingEnabled = false
-    , IsApAltEnabled = false
-    , IsApAprEnabled = false
-    , IsApRevEnabled = false
+      IsApMasterEnabled  = false
+    , Kap140LateralMode  = kap140LateralMode.Off
+    , Kap140VerticalMode = kap140VerticalMode.Off
 }
 local common = require("A2AC172RBravoCommon")
 local bravoLedBitsProcessor = require("HoneyCombBravoLedBitsProcessor")
@@ -58,7 +67,9 @@ local dev, rd, wrf, wr, init = common.OpenHidDevice()
 
 function CopyA2aEventsState(stateToCopy)
     local newState = {
-        IsApMasterEnabled = stateToCopy.IsApMasterEnabled
+          IsApMasterEnabled  = stateToCopy.IsApMasterEnabled
+        , Kap140LateralMode  = stateToCopy.Kap140LateralMode
+        , Kap140VerticalMode = stateToCopy.Kap140VerticalMode
     }
     return newState
 end
@@ -66,7 +77,9 @@ end
 function HasA2aEventsStateChanged(currentState, previousState)
     local hasChanged = false
 
-    if currentState.IsApMasterEnabled ~= previousState.IsApMasterEnabled then
+    if currentState.IsApMasterEnabled  ~= previousState.IsApMasterEnabled
+    or currentState.Kap140LateralMode ~= previousState.Kap140LateralMode
+    or currentState.Kap140VerticalMode ~= previousState.Kap140VerticalMode then
         hasChanged = true
     end
 
@@ -79,7 +92,7 @@ function ClearAutoPilotLeds()
     bravoLedBitsProcessor.SetLedBitsFromFeatureString(featureString)
 
     -- Clear bits
-    bravoLedBitsProcessor.TurnOffAutoPilotHeadingLed()
+    bravoLedBitsProcessor.TurnOffAutoPilotHdgLed()
     bravoLedBitsProcessor.TurnOffAutoPilotNavLed()
     bravoLedBitsProcessor.TurnOffAutoPilotAprLed()
     bravoLedBitsProcessor.TurnOffAutoPilotRevLed()
@@ -93,8 +106,16 @@ function ClearAutoPilotLeds()
     com.writefeature(dev, commandString, wrf)
 end
 
-function AutoPilotMasterSwitchEvent(offset, value)
+function Kap140IsAPflagEvent(varname, value, userParameter)
     currentA2aEventsState.IsApMasterEnabled = value > 0
+end
+
+function Kap140ActiveLateralModeEvent(varname, value, userParameter)
+    currentA2aEventsState.Kap140LateralMode = value
+end
+
+function Kap140ActiveVerticalModeEvent(varname, value, userParameter)
+    currentA2aEventsState.Kap140VerticalMode = value
 end
 
 function AutoPilotHdgButtonEvent(joynum, button, downup)
@@ -170,57 +191,57 @@ function AutoPilotMasterButtonEvent(joynum, button, downup)
 end
 
 function AutoPilotIncreaseButtonEvent(joynum, button, downup)
-    if  currentApModeSelect == apModeSelect.Alt then
+    if  currentApModeSelector == apModeSelector.Alt then
         ipc.writeLvar("kap140_InnerKnob", 1)
-    elseif  currentApModeSelect == apModeSelect.Vs then
+    elseif  currentApModeSelector == apModeSelector.Vs then
         ipc.writeLvar("kap140_up_button", 1)
         ipc.writeLvar("kap140_up", 1)
         ipc.sleep(50)
         ipc.writeLvar("kap140_up_button", 0)
-    elseif  currentApModeSelect == apModeSelect.Hdg then
+    elseif  currentApModeSelector == apModeSelector.Hdg then
         ipc.control(p3dControlIds.HeadingBugInc)
-    elseif  currentApModeSelect == apModeSelect.Crs then
+    elseif  currentApModeSelector == apModeSelector.Crs then
         ipc.control(p3dControlIds.Vor1ObiInc)
-    elseif currentApModeSelect == apModeSelect.Ias then -- Used for Baro
+    elseif currentApModeSelector == apModeSelector.Ias then -- Used for Baro
         ipc.writeLvar("kap140_InnerKnob", 1)
     end
 end
 
 function AutoPilotDecreaseButtonEvent(joynum, button, downup)
-    if  currentApModeSelect == apModeSelect.Alt then
+    if  currentApModeSelector == apModeSelector.Alt then
         ipc.writeLvar("kap140_InnerKnob", -1)
-    elseif  currentApModeSelect == apModeSelect.Vs then
+    elseif  currentApModeSelector == apModeSelector.Vs then
         ipc.writeLvar("kap140_dn_button", 1)
         ipc.writeLvar("kap140_dn", 1)
         ipc.sleep(50)
         ipc.writeLvar("kap140_dn_button", 0)
-    elseif  currentApModeSelect == apModeSelect.Hdg then
+    elseif  currentApModeSelector == apModeSelector.Hdg then
         ipc.control(p3dControlIds.HeadingBugDec)
-    elseif  currentApModeSelect == apModeSelect.Crs then
+    elseif  currentApModeSelector == apModeSelector.Crs then
         ipc.control(p3dControlIds.Vor1ObiDec)
-    elseif currentApModeSelect == apModeSelect.Ias then -- Used for Baro
+    elseif currentApModeSelector == apModeSelector.Ias then -- Used for Baro
         ipc.writeLvar("kap140_InnerKnob", -1)
     end
 end
 
 function AutoPilotSelectIasButtonEvent(joynum, button, downup)
-    currentApModeSelect = apModeSelect.Ias
+    currentApModeSelector = apModeSelector.Ias
 end
 
 function AutoPilotSelectCrsButtonEvent(joynum, button, downup)
-    currentApModeSelect = apModeSelect.Crs
+    currentApModeSelector = apModeSelector.Crs
 end
 
 function AutoPilotSelectHdgButtonEvent(joynum, button, downup)
-    currentApModeSelect = apModeSelect.Hdg
+    currentApModeSelector = apModeSelector.Hdg
 end
 
 function AutoPilotSelectVsButtonEvent(joynum, button, downup)
-    currentApModeSelect = apModeSelect.Vs
+    currentApModeSelector = apModeSelector.Vs
 end
 
 function AutoPilotSelectAltButtonEvent(joynum, button, downup)
-    currentApModeSelect = apModeSelect.Alt
+    currentApModeSelector = apModeSelector.Alt
 end
 
 -- Initialise previous state
@@ -241,8 +262,50 @@ function Poll(time)
             local featureString, n = com.readfeature(dev)
             bravoLedBitsProcessor.SetLedBitsFromFeatureString(featureString)
 
+            local isApMasterEnabled = currentState.IsApMasterEnabled
+            local isApHdgEnabled    = false
+            local isApNavEnabled    = false
+            local isApAprEnabled    = false
+            local isApRevEnabled    = false
+            local isApAltEnabled    = false
+            local isApVsEnabled     = false
+            local isApIasEnabled    = false
+
+            if currentState.Kap140LateralMode == kap140LateralMode.Off then
+                -- Do nothing. No LEDs to turn on.
+            elseif currentState.Kap140LateralMode == kap140LateralMode.Roll then
+                -- Do nothing. There is no indicator available for this.
+            elseif currentState.Kap140LateralMode == kap140LateralMode.Hdg then
+                isApHdgEnabled = true
+            elseif currentState.Kap140LateralMode == kap140LateralMode.Nav then
+                isApNavEnabled = true
+            elseif currentState.Kap140LateralMode == kap140LateralMode.Apr then
+                isApAprEnabled = true
+            elseif currentState.Kap140LateralMode == kap140LateralMode.Rev then
+                isApRevEnabled = true
+            elseif currentState.Kap140LateralMode == kap140LateralMode.Gs then
+                isApAprEnabled = true
+            end
+
+            if currentState.Kap140VerticalMode == kap140VerticalMode.Off then
+                -- Do nothing. No LEDs to turn on.
+            elseif currentState.Kap140VerticalMode == kap140VerticalMode.Vs then
+                isApVsEnabled = true
+            elseif currentState.Kap140VerticalMode == kap140VerticalMode.Alt then
+                isApAltEnabled = true
+            elseif currentState.Kap140VerticalMode == kap140VerticalMode.Gs then
+                isApVsEnabled = true
+            end
+
             -- Set Bravo LED bits according to A2A C172 State
-            bravoLedBitsProcessor.SetAutoPilotMasterLed(currentState.IsApMasterEnabled)
+            bravoLedBitsProcessor.SetAutoPilotMasterLed(isApMasterEnabled)
+            bravoLedBitsProcessor.SetAutoPilotHdgLed(isApHdgEnabled)
+            bravoLedBitsProcessor.SetAutoPilotNavLed(isApNavEnabled)
+            bravoLedBitsProcessor.SetAutoPilotAprLed(isApAprEnabled)
+            bravoLedBitsProcessor.SetAutoPilotRevLed(isApRevEnabled)
+            bravoLedBitsProcessor.SetAutoPilotAltLed(isApAltEnabled)
+            bravoLedBitsProcessor.SetAutoPilotVsLed(isApVsEnabled)
+            bravoLedBitsProcessor.SetAutoPilotIasLed(isApIasEnabled)
 
             -- Write LEDs to Bravo device
             local commandString = bravoLedBitsProcessor.GetFeatureStringFromLedBits()
@@ -255,6 +318,12 @@ function Poll(time)
     end
 end
 
+function Terminate()
+    if dev ~= 0 then
+        com.close(dev)
+    end
+end
+
 --
 -- Initialise program
 --
@@ -262,9 +331,15 @@ end
 -- Initialise Autopilot LEDs by turning them off
 ClearAutoPilotLeds()
 
--- Subscribe to events
-event.offset(offsets.AutoPilotMasterSwitch, "UD", 0, "AutoPilotMasterSwitchEvent")
+-- Subscribe to LVar events
+event.terminate("Terminate")
 
+local lVarPollInterval = 250 -- Milliseconds
+event.Lvar("kap140_isAPflag", lVarPollInterval, "Kap140IsAPflagEvent")
+event.Lvar("kap140_activeLateral", lVarPollInterval, "Kap140ActiveLateralModeEvent")
+event.Lvar("kap140_activeVertical", lVarPollInterval, "Kap140ActiveVerticalModeEvent")
+
+-- Subscribe to Buttons Events
 event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotHdg, 3, "AutoPilotHdgButtonEvent")
 event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotNav, 3, "AutoPilotNavButtonEvent")
 event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotApr, 3, "AutoPilotAprButtonEvent")
@@ -280,10 +355,6 @@ event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectCrs, 1,
 event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectHdg, 1, "AutoPilotSelectHdgButtonEvent")
 event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectVs, 1, "AutoPilotSelectVsButtonEvent")
 event.button(common.HoneycombBravoJoystickNumber, buttons.AutoPilotSelectAlt, 1, "AutoPilotSelectAltButtonEvent")
-
--- Initialse all LEDs by turning them off
-local commandString = bravoLedBitsProcessor.GetFeatureStringFromLedBits()
-com.writefeature(dev, commandString, wrf)
 
 -- Start the main event loop
 event.timer(1000/pollrate, "Poll")  -- poll values 'Pollrate' times per second
