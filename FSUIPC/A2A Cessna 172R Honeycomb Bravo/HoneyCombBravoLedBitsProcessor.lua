@@ -11,15 +11,15 @@
 
 local bravoLedBitsProcessor = {
       AutoPilot = {
-        Bits                = 0x00 -- The bits value for the Auto Pilot LEDs
-      , HeadingBitMask      = 0x01
-      , NavBitMask          = 0x02
-      , AprBitMask          = 0x04
-      , RevBitMask          = 0x08
-      , AltBitMask          = 0x10
-      , VsBitMask           = 0x20
-      , IasBitMask          = 0x40
-      , ApMasterBitMask     = 0x80
+        Bits            = 0x00 -- The bits value for the Auto Pilot LEDs
+      , HdgBitMask      = 0x01
+      , NavBitMask      = 0x02
+      , AprBitMask      = 0x04
+      , RevBitMask      = 0x08
+      , AltBitMask      = 0x10
+      , VsBitMask       = 0x20
+      , IasBitMask      = 0x40
+      , ApMasterBitMask = 0x80
     }
     , Lights1 = {
         Bits                  = 0x00 -- The bits value for the Lights1 LEDs
@@ -82,20 +82,20 @@ end
 
 -- Auto Pilot LEDs
 
-function bravoLedBitsProcessor.SetAutoPilotHeadingLed(turnOn)
+function bravoLedBitsProcessor.SetAutoPilotHdgLed(turnOn)
     if turnOn then
-        bravoLedBitsProcessor.TurnOnAutoPilotHeadingLed()
+        bravoLedBitsProcessor.TurnOnAutoPilotHdgLed()
     else
-        bravoLedBitsProcessor.TurnOffAutoPilotHeadingLed()
+        bravoLedBitsProcessor.TurnOffAutoPilotHdgLed()
     end
 end
 
-function bravoLedBitsProcessor.TurnOnAutoPilotHeadingLed()
-    bravoLedBitsProcessor.AutoPilot.Bits = logic.Or(bravoLedBitsProcessor.AutoPilot.Bits, bravoLedBitsProcessor.AutoPilot.HeadingBitMask)
+function bravoLedBitsProcessor.TurnOnAutoPilotHdgLed()
+    bravoLedBitsProcessor.AutoPilot.Bits = logic.Or(bravoLedBitsProcessor.AutoPilot.Bits, bravoLedBitsProcessor.AutoPilot.HdgBitMask)
 end
 
-function bravoLedBitsProcessor.TurnOffAutoPilotHeadingLed()
-    bravoLedBitsProcessor.AutoPilot.Bits = logic.And(bravoLedBitsProcessor.AutoPilot.Bits, logic.Not(bravoLedBitsProcessor.AutoPilot.HeadingBitMask))
+function bravoLedBitsProcessor.TurnOffAutoPilotHdgLed()
+    bravoLedBitsProcessor.AutoPilot.Bits = logic.And(bravoLedBitsProcessor.AutoPilot.Bits, logic.Not(bravoLedBitsProcessor.AutoPilot.HdgBitMask))
 end
 
 function bravoLedBitsProcessor.SetAutoPilotNavLed(turnOn)

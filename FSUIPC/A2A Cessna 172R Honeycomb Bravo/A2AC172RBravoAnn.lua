@@ -213,6 +213,12 @@ function Poll(time)
     end
 end
 
+function Terminate()
+    if dev ~= 0 then
+        com.close(dev)
+    end
+end
+
 --
 -- Initialise program
 --
@@ -221,6 +227,8 @@ end
 ClearAnnunicatorLeds()
 
 -- Subscribe to events
+event.terminate("Terminate")
+
 local lVarPollInterval = 250 -- Milliseconds
 event.Lvar("OilPressLight", lVarPollInterval, "LowOilPressureLightEvent")
 event.Lvar("FuelLight", lVarPollInterval, "LowFuelLightEvent")
