@@ -14,8 +14,15 @@ local buttonBitOffsets = {
       TrimDown = 21
     , TrimUp   = 22
 }
-local trimDelta = 32
-local pollrate = 50 -- Polling rate in number of polls per second.
+local trimDownButtonMask = logic.Shl(1, buttonBitOffsets.TrimDown)
+local trimUpButtonMask = logic.Shl(1, buttonBitOffsets.TrimUp)
+local trimDelta = 16
+local trimDeltaLarge = 128
+local pollInterval = 10 -- Polling interval in milliseconds.
+local fastTimeLimit = 30
+local lastTimeTrimDown = nil
+local lastTimeTrimUp = nil
+local previousButtons = 0
 
 local common = require("A2AC172RBravoCommon")
 
@@ -24,6 +31,7 @@ local dev, rd, wrf, wr, init = common.OpenHidDevice()
 
 -- Process Loop
 function Poll(Time)
+    local elapsedTime = ipc.elapsedtime()
 
     -- Read data from device
     local data, n = com.readlast(dev, rd)
@@ -31,17 +39,40 @@ function Poll(Time)
     if n ~= 0 then
         -- There is data so get the buttons
         local buttons = com.gethidbuttons(dev, data)
+        local buttonDifferences = logic.Xor(buttons, previousButtons)
+        previousButtons = buttons
 
-        local mask = logic.Shl(1, buttonBitOffsets.TrimDown)
-        if logic.And(buttons, mask) ~= 0 then
-            ipc.writeSW(offsets.ElevatorTrim, ipc.readSW(offsets.ElevatorTrim) - trimDelta)
+        if buttonDifferences ~= 0 then
+
+            local delta = trimDelta
+            if logic.And(buttonDifferences, trimDownButtonMask) ~= 0 then
+                if (lastTimeTrimDown ~= nil) and ((elapsedTime - lastTimeTrimDown) < fastTimeLimit) then
+                    delta = trimDeltaLarge
+                end
+                lastTimeTrimDown = elapsedTime
+                ipc.writeSW(offsets.ElevatorTrim, ipc.readSW(offsets.ElevatorTrim) - delta)
+            end
+            if logic.And(buttonDifferences, trimUpButtonMask) ~= 0 then
+                if (lastTimeTrimUp ~= nil) and ((elapsedTime - lastTimeTrimUp) < fastTimeLimit) then
+                    delta = trimDeltaLarge
+                end
+                lastTimeTrimUp = elapsedTime
+                ipc.writeSW(offsets.ElevatorTrim, ipc.readSW(offsets.ElevatorTrim) + delta)
+            end
+
         end
-        mask = logic.Shl(1, buttonBitOffsets.TrimUp)
-        if logic.And(buttons, mask) ~= 0 then
-            ipc.writeSW(offsets.ElevatorTrim, ipc.readSW(offsets.ElevatorTrim) + trimDelta)
-        end
+
     end
 end
 
+function Terminate()
+    if dev ~= 0 then
+        com.close(dev)
+    end
+end
+
+-- Subscribe to events
+event.terminate("Terminate")
+
 -- Start the main event loop
-event.timer(1000/pollrate, "Poll")  -- poll values 'Pollrate' times per second
+event.timer(pollInterval, "Poll")
