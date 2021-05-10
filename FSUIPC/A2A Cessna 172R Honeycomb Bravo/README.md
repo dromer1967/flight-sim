@@ -6,6 +6,8 @@ LUA scripts to support the Honeycomb Bravo Throttle Quadrant in the A2A Cessna 1
 (Only tested in P3D V5.1 HF1)
 
 #### Releases
+* 0.5
+  * Removed Trim Wheel lua script because I just can't get it to work properly
 * 0.4
   * Auto Pilot LEDs are now supported (A2A have updated their 172 dll for this!)
   * Removed lua script to support buttons > 32 since the latest version of FSUIPC does support them natively now
@@ -30,13 +32,11 @@ LUA scripts to support the Honeycomb Bravo Throttle Quadrant in the A2A Cessna 1
   * Vs Button is used for ARM
   * Ias button is used for the Barometer
   * When the selection switch is on Ias it can be used to adjust the barometer
-* Trim wheel
 
 #### Usage:
 * Copy the following files to your FSUIPC folder (where fsuipc.dll is located)
   * A2AC172RBravoAnn.lua
   * A2AC172RBravoAp.lua
-  * A2AC172RBravoTrm.lua (optional; only use when you want to support this usage of the trim wheel. Make sure you then don't assign the trim wheel buttons to something else in fsuipc)
   * A2AC172RBravoCommon.lua
   * HoneyCombBravoLedBitsProcessor.lua
 * Modify fsuipc.ini and add the following parts:
@@ -45,12 +45,10 @@ LUA scripts to support the Honeycomb Bravo Throttle Quadrant in the A2A Cessna 1
 [Auto]
 1=Lua A2AC172RBravoAnn
 2=Lua A2AC172RBravoAp
-3=Lua A2AC172RBravoTrm
 
 [LuaFiles]
 1=A2AC172RBravoAnn
 2=A2AC172RBravoAp
-3=A2AC172RBravoTrm
 ```
 
-Please note that it is advised to use a separate A2A C172 profile in fsuipc for the [Auto] section so the lua files will only load when the A2A C172 is loaded. Please check the fsuipc manuals for that.
+Please note that it is advised to use a separate A2A C172 profile in fsuipc so the lua files will only load when the A2A C172 is loaded. Please check the fsuipc manuals for that.
